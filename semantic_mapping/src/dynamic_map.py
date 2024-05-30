@@ -45,6 +45,7 @@ class DynamicMap():
         self.pad_num = cfg.MAPPING.TILE_PAD_NUMBER   # number of tiles on each direction
         self.pad_total_num = 2 * self.pad_num + 1
         self.map_boundary = None
+        self.render_global_map_flag = cfg.MAPPING.RENDER_GLOBAL_MAP_FLAG
         
         self.map_height = int(self.pad_total_num * self.tile_size_d)
         self.map_width = int(self.pad_total_num * self.tile_size_d)
@@ -105,9 +106,11 @@ class DynamicMap():
             
             self.map = self.update_map(self.map, pcd_in_range, pcd_label, T_lidar_to_map)
 
-            map_rendered = self.render_local_map(self.map, T_ego_to_map, self.render_ego_centric)
+            local_map_rendered = self.render_local_map(self.map, T_ego_to_map, self.render_ego_centric)
 
-        return self.map, map_rendered, pcd_in_range, pcd_label, None #, image_with_pcd
+            global_map_rendered = self.render_global_map(self.map_tile) if self.render_global_map_flag else None
+
+        return self.map, local_map_rendered, global_map_rendered, pcd_in_range, pcd_label, None #, image_with_pcd
     
 
     def mapping_nuscenes(self, 
@@ -459,6 +462,35 @@ class DynamicMap():
             return map_rendered_ego_centric
         return self.map_rendered
 
+
+    def render_global_map(self, global_map):
+        origins = np.array([key for key in global_map.keys()])
+        x_min, y_min = np.min(origins, axis=0)
+        x_max, y_max = np.max(origins, axis=0)
+        x_tile_num = int((x_max - x_min) / self.tile_size_meter) + 1
+        y_tile_num = int((y_max - y_min) / self.tile_size_meter) + 1
+        x_map_size = x_tile_num * self.tile_size_d
+        y_map_size = y_tile_num * self.tile_size_d
+        global_map_rendered = np.zeros((x_map_size, y_map_size, 3), dtype=np.uint8)
+        
+        # active map tiles
+        x_min_local, y_min_local = self.map_origin
+        x_origin_d = int((x_min_local - x_min) / self.tile_size_meter) * self.tile_size_d
+        y_origin_d = int((y_min_local - y_min) / self.tile_size_meter) * self.tile_size_d
+        global_map_rendered[
+            x_origin_d:x_origin_d+self.tile_size_d*self.pad_total_num, 
+            y_origin_d:y_origin_d+self.tile_size_d*self.pad_total_num] = self.map_rendered
+        
+        # inactive map tiles
+        for key in global_map.keys():
+            if 'map_rendered' not in global_map[key]:
+                continue
+            map_tile_rendered = global_map[key]['map_rendered']
+            x_origin, y_origin = key
+            x_origin_d = int((x_origin - x_min) / self.tile_size_meter) * self.tile_size_d
+            y_origin_d = int((y_origin - y_min) / self.tile_size_meter) * self.tile_size_d
+            global_map_rendered[x_origin_d:x_origin_d+self.tile_size_d, y_origin_d:y_origin_d+self.tile_size_d] = map_tile_rendered
+        return global_map_rendered
 
 # Test
 def main():

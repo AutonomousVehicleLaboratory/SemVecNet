@@ -144,7 +144,8 @@ _C.MAPPING.TILE_SIZE_METER = 35.5
 # _C.MAPPING.TILE_SIZE_METER = 60.0
 # number of tile padding in each direction
 _C.MAPPING.TILE_PAD_NUMBER = 1
-
+# render global map
+_C.MAPPING.RENDER_GLOBAL_MAP_FLAG = False
 # --------------------------------------------------------------------------- #
 # Vision Semantic Segmentation Configuration
 # --------------------------------------------------------------------------- #
