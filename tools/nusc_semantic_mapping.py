@@ -15,10 +15,10 @@ from pyquaternion import Quaternion
 # Add src directory into the path
 sys.path.insert(0, osp.abspath(osp.join(osp.dirname(__file__), "../")))
 
-import src.network.deeplab_v3_plus.data.utils.mapillary_visualization as mapillary_visl
-from src.hrnet.hrnet_semantic_segmentation_tensorrt import HRNetSemanticSegmentationTensorRT, get_custom_hrnet_args
-from src.dynamic_map import DynamicMap
-from src.node_config.argo_cfg import get_cfg_defaults
+import semantic_mapping.src.utils.mapillary_visualization as mapillary_visl
+from semantic_mapping.src.hrnet.hrnet_semantic_segmentation_tensorrt import HRNetSemanticSegmentationTensorRT, get_custom_hrnet_args
+from semantic_mapping.src.dynamic_map import DynamicMap
+from semantic_mapping.src.node_config.nuscenes_cfg import get_cfg_defaults
 
 camera_types = [
         'CAM_FRONT',
@@ -145,13 +145,11 @@ def get_dynamic_map(nusc, scene, cfg, dm_dict):
 
 def generate_semantic_map_on_nuscenes(nusc, segmentation, cfg, seg_color_ref):
     dm_dict = {} # store dynamic map saparately for each location
-    import pickle
-    with open('dynamic_map.pickle', 'rb') as handle:
-        dm_dict = pickle.load(handle)
+
     from nuscenes.utils import splits
     val_scenes = splits.val
-    from matplotlib import pyplot as plt
-    fig, axes = plt.subplots(1, 2, figsize=(15,7))
+    # from matplotlib import pyplot as plt
+    # fig, axes = plt.subplots(1, 2, figsize=(15,7))
     
     # Go over scenes
     for scene in tqdm(nusc.scene):
@@ -205,12 +203,11 @@ def generate_semantic_map_on_nuscenes(nusc, segmentation, cfg, seg_color_ref):
 def main():
     cfg = get_cfg_defaults()
 
-    network_cfg = cfg.VISION_SEM_SEG.SEM_SEG_NETWORK
-    seg_color_ref = mapillary_visl.get_labels(network_cfg.DATASET_CONFIG)
+    seg_color_ref = mapillary_visl.get_labels(cfg.VISION_SEM_SEG.DATASET_CONFIG)
     
     seg = HRNetSemanticSegmentationTensorRT(get_custom_hrnet_args())
 
-    nusc = load_nuscenes(version='v1.0-trainval', dataroot='/home/semantic_mapping/nuscenes/nuScenes')
+    nusc = load_nuscenes(version=cfg.NUSCENES_VERSION, dataroot=cfg.NUSCENES_PATH)
     full_map = generate_semantic_map_on_nuscenes(nusc, seg, cfg, seg_color_ref)
 
 

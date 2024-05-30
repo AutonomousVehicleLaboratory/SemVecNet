@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 # Add src directory into the path
 sys.path.insert(0, osp.abspath(osp.join(osp.dirname(__file__), "../")))
 
-import src.network.deeplab_v3_plus.data.utils.mapillary_visualization as mapillary_visl
-from src.hrnet.hrnet_semantic_segmentation_tensorrt import HRNetSemanticSegmentationTensorRT, get_custom_hrnet_args
-from src.dynamic_map import DynamicMap
-from src.node_config.argo_cfg import get_cfg_defaults
+import semantic_mapping.src.utils.mapillary_visualization as mapillary_visl
+from semantic_mapping.src.hrnet.hrnet_semantic_segmentation_tensorrt import HRNetSemanticSegmentationTensorRT, get_custom_hrnet_args
+from semantic_mapping.src.dynamic_map import DynamicMap
+from semantic_mapping.src.node_config.argo_cfg import get_cfg_defaults
 from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
 from av2.structures.sweep import Sweep
 
@@ -251,8 +251,7 @@ def main():
     cfg = get_cfg_defaults()
     # dm = DynamicMap(cfg)
 
-    network_cfg = cfg.VISION_SEM_SEG.SEM_SEG_NETWORK
-    seg_color_ref = mapillary_visl.get_labels(network_cfg.DATASET_CONFIG)
+    seg_color_ref = mapillary_visl.get_labels(cfg.VISION_SEM_SEG.DATASET_CONFIG)
     
     seg = HRNetSemanticSegmentationTensorRT(get_custom_hrnet_args())
 
