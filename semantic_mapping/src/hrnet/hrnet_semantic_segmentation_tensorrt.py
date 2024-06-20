@@ -61,7 +61,7 @@ class HRNetSemanticSegmentationTensorRT():
             args: engine file path
         """
         self.engine = self.load_engine(args.engine_file_path)
-        dummy_input_file = args.VISION_SEM_SEG.DUMMY_IMAGE_PATH
+        dummy_input_file = args.dummy_image_path
         input_image, self.image_width, self.image_height = self.load_image(dummy_input_file)
         self.context = self.engine.create_execution_context()
         ### newer version (4090)

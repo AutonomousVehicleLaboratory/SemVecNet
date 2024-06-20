@@ -205,7 +205,7 @@ def main():
 
     seg_color_ref = mapillary_visl.get_labels(cfg.VISION_SEM_SEG.DATASET_CONFIG)
     
-    seg = HRNetSemanticSegmentationTensorRT(get_custom_hrnet_args())
+    seg = HRNetSemanticSegmentationTensorRT(get_custom_hrnet_args(cfg))
 
     nusc = load_nuscenes(version=cfg.NUSCENES_VERSION, dataroot=cfg.NUSCENES_PATH)
     full_map = generate_semantic_map_on_nuscenes(nusc, seg, cfg, seg_color_ref)
