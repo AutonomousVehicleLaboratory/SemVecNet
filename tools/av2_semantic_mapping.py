@@ -222,7 +222,7 @@ def generate_semantic_image_on_argoverse(av_loader, segmentation, cfg, seg_color
                 continue
             map_path = get_semantic_map_path(image_paths['ring_front_center'])
             if not os.path.exists(map_path):
-                map, map_rendered, pcd_in_range, pcd_label = dm.mapping_lidar(sweep.xyz, sweep.intensity,
+                map, map_rendered, pcd_in_range, pcd_label = dm.mapping_argoverse(sweep.xyz, sweep.intensity,
                     av_loader,
                     semantic_images,
                     CAM_NAMES,

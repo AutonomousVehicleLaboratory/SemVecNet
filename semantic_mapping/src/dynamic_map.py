@@ -155,6 +155,54 @@ class DynamicMap():
             map_rendered = self.render_local_map(self.map, T_ego_to_map, self.render_ego_centric, filter=False)
 
         return self.map, map_rendered, pcd_in_range, pcd_label
+    
+
+    def mapping_argoverse(self, 
+                pcd,
+                intensity,
+                av_loader,
+                semantic_images,
+                cam_names,
+                pcd_timestamp,
+                cam_timestamps,
+                log_id, 
+                T_lidar_to_map,
+                T_ego_to_map,
+                cam_crop_filter = None):
+        """
+        Receives the semantic segmentation image, the pose of the vehicle, and the calibration of the camera,
+        we will build a semantic point cloud, then project it into the 2D bird's eye view coordinates.
+
+        Args:
+            pcd: np.ndarray with shape (4, N), point cloud of type (x, y, z, intensity)
+            semantic_image: np.ndarray with shape (H, W, C), 2D semantic image
+            intrinsics: np.ndarray with shape (3, 3), camera intrinsic matrix
+            T_lidar_to_camera: np.ndarray with shape (4, 4), the transformation from lidar frame to camera frame.
+            T_lidar_to_map: np.ndarray with shape (4,4), the transformation matrix from lidar frame to map frame,
+            T_ego_to_map: np.ndarray with shape (4,4), the transformation matrix from ego vehicle frame to map frame.
+        """
+        # Initialize the map
+        self.check_map_origin(T_lidar_to_map)
+
+        pcd_in_range_ = []
+        pcd_label_ = []
+        if self.depth_method == 'points_map' or self.depth_method == 'points_raw':
+            for cam_name in cam_names:
+                pcd_in_range, pcd_label = self.project_pcd_argoverse(av_loader, semantic_images[cam_name], 
+                                                                     pcd, intensity, cam_name, cam_timestamps[cam_name], 
+                                                                     pcd_timestamp, log_id, cam_crop_filter[cam_name]['lidar_filter'])
+                pcd_label = self.merge_color(pcd_label)
+                pcd_in_range_.append(pcd_in_range)
+                pcd_label_.append(pcd_label)
+            
+            pcd_in_range_ = np.concatenate(pcd_in_range_, axis = 1)
+            pcd_label_ = np.concatenate(pcd_label_, axis = 1)
+            
+            self.map = self.update_map(self.map, pcd_in_range_, pcd_label_, T_lidar_to_map)
+
+            map_rendered = self.render_local_map(self.map, T_ego_to_map, self.render_ego_centric)
+
+        return self.map, map_rendered, pcd_in_range, pcd_label
 
 
     def check_map_origin(self, T_pcd_to_map):
@@ -348,6 +396,24 @@ class DynamicMap():
 
         return masked_pcd, label
 
+
+    def project_pcd_argoverse(self, av_loader, segmented_image, pcd, intensity, cam_name, cam_timestamp, pcd_timestamp, log_id, cam_crop = None):
+        IXY, points_cam, mask = av_loader.project_ego_to_img_motion_compensated(pcd,
+                                                                                cam_name,
+                                                                                cam_timestamp,
+                                                                                pcd_timestamp,
+                                                                                log_id)
+        pcd = np.concatenate((pcd, intensity[..., np.newaxis]), axis = 1)
+        masked_pcd = pcd[mask].T
+        image_idx = IXY[mask].T.astype(np.int64)
+        crop_valid_mask = np.logical_and(image_idx[1, :] > cam_crop[0], image_idx[1, :] < cam_crop[1])
+        image_idx = image_idx[:, crop_valid_mask]
+        masked_pcd = masked_pcd[:, crop_valid_mask]
+        image_idx[1, :] = image_idx[1, :] - cam_crop[0]
+        label = segmented_image[image_idx[1, :], image_idx[0, :]].T
+
+        return masked_pcd, label
+    
 
     def merge_color(self, pcd_label):
         # print(pcd_label.shape)
