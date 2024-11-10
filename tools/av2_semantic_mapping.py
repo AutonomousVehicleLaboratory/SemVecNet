@@ -20,9 +20,8 @@ from semantic_mapping.src.node_config.argo_cfg import get_cfg_defaults
 from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
 from av2.structures.sweep import Sweep
 
-CAM_NAMES = ['ring_front_center']
-# CAM_NAMES = ['ring_front_center', 'ring_front_right', 'ring_front_left',
-#     'ring_rear_right','ring_rear_left', 'ring_side_right', 'ring_side_left']
+CAM_NAMES = ['ring_front_center', 'ring_front_right', 'ring_front_left',
+    'ring_rear_right','ring_rear_left', 'ring_side_right', 'ring_side_left']
 
 FAIL_LOGS = [
     # official
@@ -36,7 +35,7 @@ FAIL_LOGS = [
 ]
 
 
-def load_argoverse(dataset_dir, split, camera_name):
+def load_argoverse(dataset_dir, split):
     argoverse2_dir = Path(os.path.join(str(dataset_dir), split))
     av_loader = AV2SensorDataLoader(data_dir=Path(argoverse2_dir), labels_dir=Path(argoverse2_dir))
     lidar_paths = sorted(argoverse2_dir.glob(f'**/sensors/lidar/*.feather'), key=lambda x: int(x.stem))
@@ -150,6 +149,7 @@ def save_semantic_image(semantic_image, new_path, RGB2BGR=True):
         semantic_image = cv2.cvtColor(semantic_image, cv2.COLOR_BGR2RGB)
     cv2.imwrite(new_path, semantic_image)
 
+
 def get_dynamic_map(av_loader, log_id, cfg, dm_dict):
     location = av_loader.get_city_name(log_id)
     if not location in dm_dict:
@@ -222,7 +222,7 @@ def generate_semantic_image_on_argoverse(av_loader, segmentation, cfg, seg_color
                 continue
             map_path = get_semantic_map_path(image_paths['ring_front_center'])
             if not os.path.exists(map_path):
-                map, map_rendered, pcd_in_range, pcd_label = dm.mapping_lidar(sweep.xyz, sweep.intensity,
+                map, map_rendered, pcd_in_range, pcd_label = dm.mapping_argoverse(sweep.xyz, sweep.intensity,
                     av_loader,
                     semantic_images,
                     CAM_NAMES,
@@ -253,9 +253,9 @@ def main():
 
     seg_color_ref = mapillary_visl.get_labels(cfg.VISION_SEM_SEG.DATASET_CONFIG)
     
-    seg = HRNetSemanticSegmentationTensorRT(get_custom_hrnet_args())
+    seg = HRNetSemanticSegmentationTensorRT(get_custom_hrnet_args(cfg))
 
-    av_loader, _ = load_argoverse(dataset_dir = "/cogrob-avl-dataset/argoverse2/sensor/", split = "train", camera_name = "ring_front_center")
+    av_loader, _ = load_argoverse(dataset_dir = cfg.AV2_PATH, split = cfg.AV2_SPLIT)
     generate_semantic_image_on_argoverse(av_loader, seg, cfg, seg_color_ref)
 
 
