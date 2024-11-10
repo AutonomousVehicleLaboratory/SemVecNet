@@ -18,7 +18,7 @@ def get_labels(data_dir):
         config = json.load(f)
     return config["labels"]
 
-labels_np = np.array([label["color"] for label_id, label in enumerate(get_labels("/home/hzhang/Documents/projects/noeticws/src/online_semantic_mapping/config/config_65.json"))])
+labels_np = np.array([label["color"] for label_id, label in enumerate(get_labels("./semantic_mapping/config/config_65.json"))])
 
 
 def display_labels(data_dir, blocking=False):
