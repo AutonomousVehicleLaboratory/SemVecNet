@@ -30,10 +30,10 @@ class_names = [
     'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
 ]
 # map has classes: divider, ped_crossing, boundary
-map_classes = ['divider', 'ped_crossing','boundary']
+map_classes = ['divider', 'ped_crossing','boundary','centerline']
 # fixed_ptsnum_per_line = 20
 # map_classes = ['divider',]
-num_vec=50
+num_vec=70
 fixed_ptsnum_per_gt_line = 20 # now only support fixed_pts > 0
 fixed_ptsnum_per_pred_line = 20
 eval_use_same_gt_sample_num_flag=True
@@ -55,22 +55,25 @@ _num_levels_ = 1
 bev_h_ = 200
 bev_w_ = 100
 queue_length = 1 # each sequence contains `queue_length` frames.
+modality = 'sem_map'
 
 aux_seg_cfg = dict(
     use_aux_seg=True,
     bev_seg=True,
-    pv_seg=True,
+    pv_seg=False,
     seg_classes=1,
     feat_down_sample=32,
     pv_thickness=1,
 )
 
+
 model = dict(
     type='MapTRv2',
     use_grid_mask=True,
     video_test_mode=False,
-    pretrained=dict(img='ckpts/resnet50-19c8e357.pth'),
-    img_backbone=dict(
+    modality=modality,
+    pretrained=dict(sem='ckpts/resnet50-19c8e357.pth'),
+    sem_map_backbone=dict(
         type='ResNet',
         depth=50,
         num_stages=4,
@@ -79,7 +82,7 @@ model = dict(
         norm_cfg=dict(type='BN', requires_grad=False),
         norm_eval=True,
         style='pytorch'),
-    img_neck=dict(
+    sem_map_neck=dict(
         type='FPN',
         in_channels=[2048],
         out_channels=_dim_,
@@ -92,12 +95,13 @@ model = dict(
         bev_h=bev_h_,
         bev_w=bev_w_,
         num_query=900,
-        num_vec_one2one=50,
+        num_vec_one2one=num_vec,
         num_vec_one2many=300,
         k_one2many=6,
         num_pts_per_vec=fixed_ptsnum_per_pred_line, # one bbox
         num_pts_per_gt_vec=fixed_ptsnum_per_gt_line,
         dir_interval=1,
+        modality=modality,
         query_embed_type='instance_pts',
         transform_method='minmax',
         gt_shift_pts_pattern='v2',
@@ -116,6 +120,7 @@ model = dict(
             use_shift=True,
             use_can_bus=True,
             embed_dims=_dim_,
+            modality=modality,
             encoder=dict(
                 type='LSSTransform',
                 in_channels=_dim_,
@@ -205,56 +210,32 @@ model = dict(
                       weight=5),
             pc_range=point_cloud_range))))
 
-dataset_type = 'CustomNuScenesOfflineLocalMapDataset'
-data_root = 'data/nuscenes/'
+dataset_type = 'CustomNuScenesOfflineLocalSemanticMapDataset'
+data_root = '/cogrob-avl-dataset/nuScenes/'
 file_client_args = dict(backend='disk')
 
 
 train_pipeline = [
-    dict(type='LoadMultiViewImageFromFiles', to_float32=True),
-    dict(type='RandomScaleImageMultiViewImage', scales=[0.5]),
-    dict(type='PhotoMetricDistortionMultiViewImage'),
-    dict(type='NormalizeMultiviewImage', **img_norm_cfg),
-    dict(
-        type='LoadPointsFromFile',
-        coord_type='LIDAR',
-        load_dim=5,
-        use_dim=5,
-        file_client_args=file_client_args),
-    dict(type='CustomPointToMultiViewDepth', downsample=1, grid_config=grid_config),
-    dict(type='PadMultiViewImageDepth', size_divisor=32), 
-    dict(type='DefaultFormatBundle3D', with_gt=False, with_label=False,class_names=map_classes),
-    dict(type='CustomCollect3D', keys=['img', 'gt_depth'])
+    dict(type='CustomLoadSemanticMapFromFile', to_float32=True),
+    dict(type='NormalizeSemanticMap', **img_norm_cfg),
+    dict(type='CustomMapDefaultFormatBundle3D', class_names=class_names),
+    dict(type='CustomCollect3D', keys=['sem_map'])
 ]
 
 test_pipeline = [
-    dict(type='LoadMultiViewImageFromFiles', to_float32=True),
-    dict(type='RandomScaleImageMultiViewImage', scales=[0.5]),
-    dict(type='NormalizeMultiviewImage', **img_norm_cfg),
-   
-    dict(
-        type='MultiScaleFlipAug3D',
-        img_scale=(1600, 900),
-        pts_scale_ratio=1,
-        flip=False,
-        transforms=[
-            dict(type='PadMultiViewImage', size_divisor=32),
-            dict(
-                type='DefaultFormatBundle3D', 
-                with_gt=False, 
-                with_label=False,
-                class_names=map_classes),
-            dict(type='CustomCollect3D', keys=['img'])
-        ])
+    dict(type='CustomLoadSemanticMapFromFile', to_float32=True),
+    dict(type='NormalizeSemanticMap', **img_norm_cfg),
+    dict(type='CustomMapDefaultFormatBundle3D', class_names=class_names, with_label=False),
+    dict(type='CustomCollect3D', keys=['sem_map'])
 ]
 
 data = dict(
-    samples_per_gpu=4,
-    workers_per_gpu=4, # TODO
+    samples_per_gpu=5,
+    workers_per_gpu=5,
     train=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + 'nuscenes_map_infos_temporal_train.pkl',
+        ann_file=data_root + 'semantic/nuscenes_map_infos_temporal_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         modality=input_modality,
@@ -274,8 +255,8 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + 'nuscenes_map_infos_temporal_val.pkl',
-        map_ann_file=data_root + 'nuscenes_map_anns_val.json',
+        ann_file=data_root + 'semantic/nuscenes_map_infos_temporal_val.pkl',
+        map_ann_file=data_root + 'semantic/nuscenes_map_anns_val.json',
         pipeline=test_pipeline,  bev_size=(bev_h_, bev_w_),
         pc_range=point_cloud_range,
         fixed_ptsnum_per_line=fixed_ptsnum_per_gt_line,
@@ -286,8 +267,8 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + 'nuscenes_map_infos_temporal_val.pkl',
-        map_ann_file=data_root + 'nuscenes_map_anns_val.json',
+        ann_file=data_root + 'semantic/nuscenes_map_infos_temporal_val.pkl',
+        map_ann_file=data_root + 'semantic/nuscenes_map_anns_val.json',
         pipeline=test_pipeline, 
         bev_size=(bev_h_, bev_w_),
         pc_range=point_cloud_range,
@@ -301,12 +282,19 @@ data = dict(
     nonshuffler_sampler=dict(type='DistributedSampler')
 )
 
+momentum_config = dict(
+    policy='cyclic',
+    target_ratio=(0.85 / 0.95, 1),
+    cyclic_times=1,
+    step_ratio_up=0.4,
+)
+
 optimizer = dict(
     type='AdamW',
     lr=6e-4,
     paramwise_cfg=dict(
         custom_keys={
-            'img_backbone': dict(lr_mult=0.1),
+            'sem_map_backbone': dict(lr_mult=0.1),
         }),
     weight_decay=0.01)
 
@@ -318,8 +306,8 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3)
-total_epochs = 24
-evaluation = dict(interval=2, pipeline=test_pipeline, metric='chamfer',
+total_epochs = 150
+evaluation = dict(interval=1, pipeline=test_pipeline, metric='chamfer',
                   save_best='NuscMap_chamfer/mAP', rule='greater')
 # total_epochs = 50
 # evaluation = dict(interval=1, pipeline=test_pipeline)
