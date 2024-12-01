@@ -7,7 +7,7 @@ There are 3 steps to get everything installed
 
 **a. Creating the TensorRT version of [HRNet](https://github.com/NVIDIA/semantic-segmentation)**
 
-We use the docker image ```nvcr.io/nvidia/pytorch:23.04-py3```
+We use the docker image [naruarjun/tensorrt-nvidia-semseg](https://hub.docker.com/r/naruarjun/tensorrt-nvidia-semseg)
 ```shell
 # Clone forked and modified Nvidia Semantic Segmentation Monorepo
 git clone https://github.com/naruarjun/TensorRT-tutorial.git
@@ -24,7 +24,7 @@ trtexec --onnx=hrnet.onnx --fp16 --workspace=64 --buildOnly --saveEngine=hrnet.e
 
 **b. Passing the datasets through the Semantic Map Generation Pipeline**
 
-We use the docker image ```naruarjun/semvecnet:v2```
+We use the docker image [naruarjun/tensorrt-nvidia-semseg](https://hub.docker.com/r/naruarjun/tensorrt-nvidia-semseg)
 
 ```shell
 # For AV2
@@ -33,5 +33,7 @@ cd SemVecNet
 python python tools/av2_semantic_mapping.py
 ```
 **c. Generate the custom annotation files as in MapTRv2**
+
+We use the docker image [naruarjun/semvecnet:v2](https://hub.docker.com/r/naruarjun/semvecnet)
 
 This is exactly as it is in [MapTRv2](https://github.com/hustvl/MapTR/blob/maptrv2/docs/prepare_dataset.md)
