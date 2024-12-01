@@ -788,7 +788,7 @@ def extract_local_ped_crossing(avm, ego_SE3_city, patch_box, patch_angle,patch_s
     return results
 if __name__ == '__main__':
     args = parse_args()
-    for name in ['train', 'val', 'test']:
+    for name in ['train', 'val']:
         create_av2_infos_mp(
             root_path=args.data_root,
             split=name,
