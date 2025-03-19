@@ -11,3 +11,5 @@ cd SemVecNet/SemVecNet
 # For nuScenes
 ./tools/dist_train.sh projects/configs/semvecnet/semvecnet_nusc_centerline.py gpu_num
 ```
+
+The weights for SemVecNet can be found [here](https://drive.google.com/drive/u/1/folders/1s8lMptQA6aUSDGpmeliUSgua8ABNUakj).
